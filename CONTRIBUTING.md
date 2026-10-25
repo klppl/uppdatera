@@ -75,3 +75,18 @@ So a bad rule can make it miss an update, but it can't make it install someone e
 `swift build`, `swift test`, and `./scripts/build-app.sh` for the app bundle.
 `UppdateraCore` holds everything that isn't UI (scanning, sources, versions, installing), so
 most changes come with a unit test in `Tests/`.
+
+## Releasing
+
+Push a tag like `v1.2.0`, or run the Release workflow by hand. It tests, builds a universal
+`Uppdatera.dmg` and publishes it as a GitHub release. The file name never changes, so
+`releases/latest/download/Uppdatera.dmg` always points at the newest one.
+
+Add these repository secrets to sign and notarize it; without them the build is ad-hoc signed,
+opens only with right-click → Open, and can't update itself:
+
+- `MACOS_CERTIFICATE`: a Developer ID Application certificate as a base64 `.p12`
+  (`base64 -i cert.p12 | pbcopy`), and `MACOS_CERTIFICATE_PASSWORD`
+- `NOTARY_APPLE_ID`, `NOTARY_TEAM_ID` and `NOTARY_PASSWORD` (an app-specific password)
+
+To build the same thing locally: `REPO=owner/name ./scripts/build-app.sh && ./scripts/build-dmg.sh`.

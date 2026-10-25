@@ -10,12 +10,13 @@ struct AppDetail: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header.padding(16)
-            if let failure = model.failures[row.id] { FailureBanner(failure: failure, rowID: row.id) }
+            if let failure = model.failures[row.id] { FailureBanner(failure: failure, row: row) }
             if let notice = model.notices[row.id] {
                 Label(notice, systemImage: "info.circle").padding(.horizontal, 16).padding(.bottom, 8)
             }
             Divider()
-            notes
+            // Fills the pane, so the header stays at the top even when there are no notes to show.
+            notes.frame(maxHeight: .infinity)
             Divider()
             DisclosureGroup("How Uppdatera decided", isExpanded: $showTrace) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -35,40 +36,73 @@ struct AppDetail: View {
         }
     }
 
+    /// Buttons beside the summary when the pane is wide enough, underneath it when it isn't.
     private var header: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: row.app.path.path)).resizable().frame(width: 64, height: 64)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(row.app.name).font(.title2.bold())
-                Text(row.app.bundleID).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-                if let update = row.status.update {
-                    HStack(spacing: 6) {
-                        Text(row.app.displayVersion).foregroundStyle(.secondary)
-                        Image(systemName: "arrow.right")
-                        Text(update.version).fontWeight(.semibold)
-                        SourceBadge(text: update.caskToken != nil ? "Homebrew" : update.source.label)
-                        if let date = update.published {
-                            Text(date.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                } else {
-                    Text("Version \(row.app.displayVersion)").foregroundStyle(.secondary)
-                }
-                if let reason = model.suppression(for: row) {
-                    Label(reason, systemImage: "bell.slash").font(.caption).foregroundStyle(.secondary)
-                }
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 14) {
+                icon
+                summary
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 8) { actions }
             }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 8) {
-                if let state = model.installing[row.id] {
-                    InstallProgress(state: state)
-                } else if let update = row.status.update {
-                    Button(update.source == .appStore ? "Open in App Store" : "Update") { model.install(row) }
-                        .buttonStyle(.borderedProminent)
-                }
-                Menu("More") { AppActions(row: row) }.fixedSize()
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 14) { icon; summary }
+                HStack(spacing: 8) { actions }
             }
         }
+    }
+
+    private var icon: some View {
+        Image(nsImage: NSWorkspace.shared.icon(forFile: row.app.path.path)).resizable().frame(width: 64, height: 64)
+    }
+
+    private var summary: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(row.app.name).font(.title2.bold()).lineLimit(2)
+            Text(row.app.bundleID).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+            if let update = row.status.update {
+                // One line when there's room; otherwise the source and date go underneath.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) { versions(update); source(update) }
+                    VStack(alignment: .leading, spacing: 4) { versions(update); source(update) }
+                }
+            } else {
+                Text("Version \(row.app.displayVersion)").foregroundStyle(.secondary)
+            }
+            if let reason = model.suppression(for: row) {
+                Label(reason, systemImage: "bell.slash").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder private var actions: some View {
+        if let state = model.installing[row.id] {
+            InstallProgress(state: state)
+        } else if let update = row.status.update {
+            Button(update.source == .appStore ? "Open in App Store" : "Update") { model.install(row) }
+                .buttonStyle(.borderedProminent)
+                .fixedSize()
+        }
+        Menu("More") { AppActions(row: row) }.fixedSize()
+    }
+
+    private func versions(_ update: UpdateInfo) -> some View {
+        HStack(spacing: 6) {
+            Text(row.app.displayVersion).foregroundStyle(.secondary)
+            Image(systemName: "arrow.right")
+            Text(update.version).fontWeight(.semibold)
+        }
+        .lineLimit(1).truncationMode(.middle)
+    }
+
+    private func source(_ update: UpdateInfo) -> some View {
+        HStack(spacing: 6) {
+            SourceBadge(text: update.caskToken != nil ? "Homebrew" : update.source.label)
+            if let date = update.published {
+                Text(date.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .fixedSize()
     }
 
     @ViewBuilder private var notes: some View {
@@ -106,7 +140,7 @@ struct AppDetail: View {
 struct SourceBadge: View {
     let text: String
     var body: some View {
-        Text(text).font(.caption2.weight(.semibold))
+        Text(text).font(.caption2.weight(.semibold)).lineLimit(1)
             .padding(.horizontal, 6).padding(.vertical, 2)
             .background(.tint.opacity(0.15), in: Capsule())
     }
@@ -115,7 +149,7 @@ struct SourceBadge: View {
 struct FailureBanner: View {
     @Environment(AppModel.self) private var model
     let failure: Failure
-    let rowID: String
+    let row: AppRow
 
     var body: some View {
         HStack(alignment: .top) {
@@ -129,7 +163,12 @@ struct FailureBanner: View {
                 Button("Open Download Page") { NSWorkspace.shared.open(url) }
             case nil: EmptyView()
             }
-            Button("Dismiss") { model.failures[rowID] = nil }
+            // Opens a prefilled GitHub issue; nothing is sent until the user submits it there.
+            if let url = ProjectLinks.reportInstallFailure(row: row, failure: failure, diagnostics: model.diagnostics(for: row)) {
+                Button("Report…") { NSWorkspace.shared.open(url) }
+                    .help("Open a GitHub issue with this error and the app's diagnostics filled in")
+            }
+            Button("Dismiss") { model.failures[row.id] = nil }
         }
         .padding(12)
         .background(.red.opacity(0.08))

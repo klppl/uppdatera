@@ -116,6 +116,46 @@ final class CompareTests: XCTestCase {
     }
 }
 
+final class DetritusTests: XCTestCase {
+    /// Brave's case: a validly signed bundle with FinderInfo on a file fails `codesign --strict`
+    /// until that attribute is gone, and the original is left as it was.
+    func testStrippingDetritusPassesStrictCheck() async throws {
+        let work = FileManager.default.temporaryDirectory.appendingPathComponent("uppdatera-test-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: work) }
+        let app = work.appendingPathComponent("X.app")
+        let resources = app.appendingPathComponent("Contents/Resources")
+        try FileManager.default.createDirectory(at: resources, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: app.appendingPathComponent("Contents/MacOS"), withIntermediateDirectories: true)
+        try FileManager.default.copyItem(atPath: "/usr/bin/true", toPath: app.appendingPathComponent("Contents/MacOS/X").path)
+        let plist: [String: Any] = ["CFBundleIdentifier": "test.x", "CFBundleExecutable": "X", "CFBundlePackageType": "APPL"]
+        try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+            .write(to: app.appendingPathComponent("Contents/Info.plist"))
+        try Data("hi".utf8).write(to: resources.appendingPathComponent("a.txt"))
+        let signed = try await Command.run("/usr/bin/codesign", ["--force", "--sign", "-", app.path])
+        XCTAssertTrue(signed.succeeded, signed.stderr)
+
+        // The bytes Brave's Sparkle.framework folders carry (an all-zero FinderInfo isn't stored at all).
+        var finderInfo = [UInt8](repeating: 0, count: 32)
+        finderInfo.replaceSubrange(10..<14, with: [0xFF, 0xFF, 0xFF, 0xFF])
+        let file = resources.appendingPathComponent("a.txt")
+        XCTAssertEqual(setxattr(file.path, "com.apple.FinderInfo", finderInfo, finderInfo.count, 0, XATTR_NOFOLLOW), 0)
+        let before = try await Command.run("/usr/bin/codesign", ["--verify", "--deep", "--strict", app.path])
+        XCTAssertFalse(before.succeeded)
+        XCTAssertTrue(before.stderr.contains("detritus"), before.stderr)
+
+        let checked = try await Installer.strippingDetritus(app, in: work)
+        XCTAssertNotEqual(checked, app)
+        XCTAssertEqual(Installer.filesWithDetritus(in: checked), [])
+        XCTAssertEqual(Installer.filesWithDetritus(in: app).map(\.lastPathComponent), ["a.txt"])
+        let after = try await Command.run("/usr/bin/codesign", ["--verify", "--deep", "--strict", checked.path])
+        XCTAssertTrue(after.succeeded, after.stderr)
+
+        // A clean bundle is used as it is, with no copy.
+        let clean = try await Installer.strippingDetritus(checked, in: work.appendingPathComponent("again"))
+        XCTAssertEqual(clean, checked)
+    }
+}
+
 final class PackageParsingTests: XCTestCase {
     func testGoVersionOutput() {
         let out = """

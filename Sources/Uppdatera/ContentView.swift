@@ -26,6 +26,7 @@ struct ContentView: View {
             .navigationSplitViewColumnWidth(min: 190, ideal: 220)
         } detail: {
             MainList(section: section ?? .updates, selection: $selection, search: search)
+                .frame(minWidth: 380)
                 .navigationTitle((section ?? .updates).title)
                 .navigationSubtitle(model.summary)
                 .inspector(isPresented: $showInspector) {
@@ -213,12 +214,24 @@ struct AppIcon: View {
     }
 }
 
-/// "26.9.1 → **26.10.0**"
-func versionLine(_ from: String, _ to: String?) -> Text {
-    guard let to else { return Text(from).foregroundStyle(.secondary) }
-    return Text(from).foregroundStyle(.secondary)
-        + Text("  →  ").foregroundStyle(.tertiary)
-        + Text(to).fontWeight(.semibold)
+/// "26.9.1 → **26.10.0**", never cut: in a tight row the name and badges give way first,
+/// and a pair too long for one line puts the new version on a second.
+func versionLine(_ from: String, _ to: String?) -> some View {
+    let installed = Text(from).foregroundStyle(.secondary)
+    let offered = to.map { Text("→  ").foregroundStyle(.tertiary) + Text($0).fontWeight(.semibold) }
+    return ViewThatFits(in: .horizontal) {
+        HStack(spacing: 0) {
+            installed
+            if let offered { Text("  ") + offered }
+        }
+        .fixedSize()
+        VStack(alignment: .leading, spacing: 1) {
+            installed
+            if let offered { offered }
+        }
+        .fixedSize()
+    }
+    .lineLimit(1)
 }
 
 struct UpdatePill: View {
@@ -233,6 +246,7 @@ struct UpdatePill: View {
                 .padding(.vertical, 5)
                 .foregroundStyle(.white)
                 .background(Capsule().fill(.tint))
+                .fixedSize()
         }
         .buttonStyle(.plain)
     }
@@ -242,12 +256,22 @@ struct SourcePill: View {
     let text: String
     let symbol: String
     var body: some View {
-        Label(text, systemImage: symbol)
+        // Just the symbol when the row is narrow, never the word broken over several lines.
+        ViewThatFits(in: .horizontal) {
+            pill(Label(text, systemImage: symbol))
+            pill(Label(text, systemImage: symbol).labelStyle(.iconOnly)).help(text)
+        }
+    }
+
+    private func pill(_ label: some View) -> some View {
+        label
             .font(.caption)
             .foregroundStyle(.secondary)
+            .lineLimit(1)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(Capsule().fill(.quaternary))
+            .fixedSize()
     }
 }
 
@@ -260,10 +284,11 @@ struct AppRowView: View {
         HStack(spacing: 12) {
             AppIcon(url: row.app.path)
             VStack(alignment: .leading, spacing: 3) {
-                Text(row.app.name).font(.system(size: 14, weight: .medium))
+                Text(row.app.name).font(.system(size: 14, weight: .medium)).lineLimit(1)
                 versionLine(row.app.displayVersion, row.status.update?.version).font(.system(size: 12)).monospacedDigit()
+                    .help(row.status.update.map { "\(row.app.displayVersion) → \($0.version)" } ?? row.app.displayVersion)
             }
-            Spacer()
+            Spacer(minLength: 8)
             trailing
         }
         .padding(.vertical, 6)
@@ -365,14 +390,31 @@ enum ProjectLinks {
     /// Opens the "An app is wrong" issue form with the app and its diagnostics filled in.
     /// Nothing is sent until the user submits the form on GitHub.
     static func reportProblem(app: InstalledApp, diagnostics: String) -> URL? {
+        issue(template: "app-wrong.yml", title: "\(app.name): ", fields: [
+            "app": "\(app.name) (\(app.bundleID))",
+            "diagnostics": diagnostics,
+        ])
+    }
+
+    /// Opens the "An update fails to install" form with the step, the error and diagnostics filled in.
+    static func reportInstallFailure(row: AppRow, failure: Failure, diagnostics: String) -> URL? {
+        let offered = row.status.update?.version
+        let step = failure.stage.map { " while \($0.lowercased())" } ?? ""
+        return issue(template: "install-failed.yml",
+                     title: "\(row.app.name): update\(offered.map { " to \($0)" } ?? "") failed\(step)",
+                     fields: [
+                         "app": "\(row.app.name) (\(row.app.bundleID))",
+                         "update": "\(row.app.displayVersion) → \(offered ?? "?")",
+                         "error": (failure.stage.map { "\($0): " } ?? "") + failure.message,
+                         "diagnostics": diagnostics,
+                     ])
+    }
+
+    private static func issue(template: String, title: String, fields: [String: String]) -> URL? {
         guard let repo, var components = URLComponents(string: "https://github.com/\(repo)/issues/new") else { return nil }
-        components.queryItems = [
-            URLQueryItem(name: "template", value: "app-wrong.yml"),
-            URLQueryItem(name: "title", value: "\(app.name): "),
-            URLQueryItem(name: "app", value: "\(app.name) (\(app.bundleID))"),
+        components.queryItems = [URLQueryItem(name: "template", value: template), URLQueryItem(name: "title", value: title)]
             // GitHub refuses very long addresses; the trace is the useful part.
-            URLQueryItem(name: "diagnostics", value: String(diagnostics.prefix(5000))),
-        ]
+            + fields.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: String($0.value.prefix(5000))) }
         return components.url
     }
 

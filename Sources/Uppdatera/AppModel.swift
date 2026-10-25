@@ -69,6 +69,8 @@ struct InstallState: Hashable {
 struct Failure: Hashable {
     var message: String
     var remedy: InstallError.Remedy?
+    /// The install step that was running, e.g. "Checking signature".
+    var stage: String?
 }
 
 @MainActor
@@ -340,12 +342,11 @@ final class AppModel {
                 case let .handedOff(message):
                     notices[app.id] = message
                 }
-            } catch let error as InstallError {
-                installing[app.id] = nil
-                failures[app.id] = Failure(message: error.message, remedy: error.remedy)
             } catch {
+                let stage = installing[app.id]?.stage
                 installing[app.id] = nil
-                failures[app.id] = Failure(message: error.localizedDescription)
+                let known = error as? InstallError
+                failures[app.id] = Failure(message: known?.message ?? error.localizedDescription, remedy: known?.remedy, stage: stage)
             }
             refreshBadge()
         }
@@ -434,16 +435,24 @@ final class AppModel {
     // MARK: Diagnostics
 
     func diagnostics(for row: AppRow) -> String {
+        let me = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
         var lines = [
             "Uppdatera diagnostics",
+            "Uppdatera \(me) on macOS \(ProcessInfo.processInfo.operatingSystemVersionString), \(MachineArch.current)",
             "App: \(row.app.name) (\(row.app.bundleID))",
             "Path: \(row.app.path.path)",
             "Installed: \(row.app.shortVersion ?? "-") (build \(row.app.buildVersion ?? "-"))",
             "Sparkle feed: \(row.app.sparkleFeedURL?.absoluteString ?? "none")",
             "App Store: \(row.app.isAppStore)",
             "Status: \(row.status)",
-            "Trace:",
         ]
+        if let update = row.status.update {
+            lines.append("Offered: \(update.version) from \(update.source.label), download \(update.downloadURL?.absoluteString ?? "none")")
+        }
+        if let failure = failures[row.id] {
+            lines.append("Install failed\(failure.stage.map { " while \($0.lowercased())" } ?? ""): \(failure.message)")
+        }
+        lines.append("Trace:")
         lines += row.trace.map { "  - \($0)" }
         return lines.joined(separator: "\n")
     }

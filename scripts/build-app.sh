@@ -47,5 +47,6 @@ if [[ -f Resources/AppIcon.icns ]]; then cp Resources/AppIcon.icns "$APP/Content
 mkdir -p "$APP/Contents/Library/LaunchAgents"
 cp Resources/app.uppdatera.Uppdatera.agent.plist "$APP/Contents/Library/LaunchAgents/"
 
-codesign --force --deep --options runtime --sign "${SIGN_IDENTITY:--}" "$APP"
+# Notarization needs a secure timestamp; ad-hoc signatures can't have one.
+codesign --force --deep --options runtime ${SIGN_IDENTITY:+--timestamp} --sign "${SIGN_IDENTITY:--}" "$APP"
 echo "Built $APP"

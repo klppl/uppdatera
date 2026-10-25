@@ -1,0 +1,35 @@
+name: An update fails to install
+description: Uppdatera finds an update, but downloading, checking or installing it fails.
+labels: [installer]
+body:
+  - type: input
+    id: app
+    attributes:
+      label: App and bundle id
+      placeholder: "Example: Brave Browser (com.brave.Browser)"
+    validations:
+      required: true
+  - type: input
+    id: update
+    attributes:
+      label: Installed version → offered version
+      placeholder: "Example: 155.1.97.59 → 1.98.60.0"
+  - type: textarea
+    id: error
+    attributes:
+      label: What Uppdatera said
+      description: The step it was on and the message in the red banner. Report… on the banner fills this in for you.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Right-click the app in Uppdatera and choose Copy Diagnostics. Report… fills this in for you.
+      render: text
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Did installing it by hand work? Was the app open, or installed by another account?

@@ -79,17 +79,18 @@ public enum Installer {
         }
 
         progress(.verifying, nil)
-        try await verify(candidate, replacing: app)
+        let checked = try await strippingDetritus(candidate, in: work)
+        try await verify(checked, replacing: app)
 
         // Stage beside the app, so the swap is on one volume and atomic.
         let parent = app.path.deletingLastPathComponent()
         removeStaleStaging(in: parent)
         let stagingDir = parent.appendingPathComponent(".uppdatera-\(UUID().uuidString.prefix(8))", isDirectory: true)
-        var staged = candidate
+        var staged = checked
         var stagedBeside = false
         if (try? FileManager.default.createDirectory(at: stagingDir, withIntermediateDirectories: false)) != nil {
             let dest = stagingDir.appendingPathComponent(app.fileName)
-            let r = try await Command.run("/usr/bin/ditto", [candidate.path, dest.path])
+            let r = try await Command.run("/usr/bin/ditto", [checked.path, dest.path])
             if r.succeeded { staged = dest; stagedBeside = true }
         }
         defer { if stagedBeside { try? FileManager.default.removeItem(at: stagingDir) } }
@@ -140,12 +141,13 @@ public enum Installer {
         defer { cleanup() }
         guard let candidate else { throw InstallError("The download didn't contain Uppdatera.") }
         progress(.verifying, nil)
-        try await verify(candidate, replacing: me)
+        let checked = try await strippingDetritus(candidate, in: work)
+        try await verify(checked, replacing: me)
         let stagingDir = me.path.deletingLastPathComponent().appendingPathComponent(".uppdatera-\(UUID().uuidString.prefix(8))")
         try FileManager.default.createDirectory(at: stagingDir, withIntermediateDirectories: false)
         defer { try? FileManager.default.removeItem(at: stagingDir) }
         let staged = stagingDir.appendingPathComponent(me.fileName)
-        guard try await Command.run("/usr/bin/ditto", [candidate.path, staged.path]).succeeded else {
+        guard try await Command.run("/usr/bin/ditto", [checked.path, staged.path]).succeeded else {
             throw InstallError("The new version couldn't be copied beside the old one.")
         }
         progress(.replacing, nil)
@@ -259,6 +261,31 @@ public enum Installer {
 
     // MARK: Verify
 
+    /// Finder metadata that isn't part of any code signature, but that `codesign --strict` rejects
+    /// as "detritus". Some vendors ship it: Brave's bundled Sparkle.framework carries FinderInfo.
+    static let detritus = ["com.apple.FinderInfo", "com.apple.ResourceFork"]
+
+    static func filesWithDetritus(in bundle: URL) -> [URL] {
+        let inside = FileManager.default.enumerator(at: bundle, includingPropertiesForKeys: nil)?.compactMap { $0 as? URL } ?? []
+        return ([bundle] + inside).filter { url in
+            detritus.contains { getxattr(url.path, $0, nil, 0, 0, XATTR_NOFOLLOW) >= 0 }
+        }
+    }
+
+    /// The app to check and install: the download itself, or a copy without detritus when it has some.
+    /// Only those two attributes are removed, so the strict signature check still sees everything else.
+    static func strippingDetritus(_ candidate: URL, in work: URL) async throws -> URL {
+        guard !filesWithDetritus(in: candidate).isEmpty else { return candidate }
+        let copy = work.appendingPathComponent("checked", isDirectory: true).appendingPathComponent(candidate.lastPathComponent)
+        try FileManager.default.createDirectory(at: copy.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let r = try await Command.run("/usr/bin/ditto", [candidate.path, copy.path])
+        guard r.succeeded else { throw InstallError("The download couldn't be copied for checking: \(r.stderr)") }
+        for url in filesWithDetritus(in: copy) {
+            for name in detritus { removexattr(url.path, name, XATTR_NOFOLLOW) }
+        }
+        return copy
+    }
+
     static func teamID(of url: URL) async -> String? {
         guard let r = try? await Command.run("/usr/bin/codesign", ["-dv", "--verbose=2", url.path]) else { return nil }
         let text = r.stderr + r.stdout
@@ -277,7 +304,8 @@ public enum Installer {
 
         let sig = try await Command.run("/usr/bin/codesign", ["--verify", "--deep", "--strict", candidate.path])
         guard sig.succeeded else {
-            throw InstallError("The download's signature isn't valid, so it may be damaged or tampered with. Nothing was changed.")
+            let reason = sig.stderr.split(separator: "\n").first.map { ": " + $0.replacingOccurrences(of: candidate.path + ": ", with: "") } ?? ""
+            throw InstallError("The download's signature isn't valid\(reason). It may be damaged or tampered with. Nothing was changed.")
         }
         let assess = try await Command.run("/usr/sbin/spctl", ["--assess", "--type", "execute", "-vv", candidate.path])
         let verdict = assess.stderr + assess.stdout
