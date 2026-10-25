@@ -1,0 +1,29 @@
+name: An app is wrong
+description: Uppdatera offers the wrong version, misses an update, or can't check an app.
+labels: [rules]
+body:
+  - type: input
+    id: app
+    attributes:
+      label: App and bundle id
+      placeholder: "Example: VLC (org.videolan.vlc)"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What's wrong
+      placeholder: "Example: it offers 3.0.24, but the newest version is 3.0.25."
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Right-click the app in Uppdatera and choose Copy Diagnostics. Report a Problem fills this in for you.
+      render: text
+  - type: input
+    id: source
+    attributes:
+      label: Where the vendor publishes versions (if you know)
+      placeholder: "A Sparkle feed, a GitHub repo, a JSON address, a download page…"

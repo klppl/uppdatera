@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>app.uppdatera.Uppdatera.agent</string>
+	<!-- The app's own executable, so notifications come from Uppdatera itself.
+	     It wakes hourly; the chosen frequency is applied by skipping wakes. -->
+	<key>BundleProgram</key>
+	<string>Contents/MacOS/Uppdatera</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>Contents/MacOS/Uppdatera</string>
+		<string>--background-check</string>
+	</array>
+	<key>StartInterval</key>
+	<integer>3600</integer>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>AssociatedBundleIdentifiers</key>
+	<array>
+		<string>app.uppdatera.Uppdatera</string>
+	</array>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>LowPriorityIO</key>
+	<true/>
+</dict>
+</plist>

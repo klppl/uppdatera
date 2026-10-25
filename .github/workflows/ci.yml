@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Built-in rules match rules/rules.json
+        run: |
+          ./scripts/sync-rules.sh
+          git diff --exit-code Sources/UppdateraCore/BuiltInRules.swift || {
+            echo "::error::Run ./scripts/sync-rules.sh and commit the result."; exit 1; }
+      - name: Unit tests
+        run: swift test
+      - name: Validate rules
+        run: swift run Uppdatera --validate-rules rules/rules.json
+
+  live-rules:
+    # Runs every rule against its real source. Vendors change things, so this reports rather than blocks.
+    runs-on: macos-latest
+    if: github.event_name == 'pull_request'
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check rules against live sources
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: swift run Uppdatera --validate-rules rules/rules.json --live

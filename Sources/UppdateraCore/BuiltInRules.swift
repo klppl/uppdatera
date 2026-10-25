@@ -1,0 +1,740 @@
+import Foundation
+
+// Generated from rules/rules.json by scripts/sync-rules.sh. Edit that file, not this one.
+extension RulesStore {
+    static let builtInJSON = #"""
+    {
+      "apps": {
+        "ai.elementlabs.lmstudio": {
+          "downloadPage": "https://lmstudio.ai/download",
+          "source": {
+            "kind": "redirect",
+            "url": "https://lmstudio.ai/download/latest/darwin/{arch}",
+            "versionPattern": "/([0-9]+\\.[0-9]+\\.[0-9]+)-[0-9]+/"
+          }
+        },
+        "ai.unsloth.studio": {
+          "note": "Read the release tag, not latest.json's pypi_version (a calendar scheme). The Mac asset was renamed between releases, so it's matched by pattern. Checked 2026-08-31.",
+          "source": {
+            "assetPattern": "MacOS\\.dmg$",
+            "kind": "github",
+            "repo": "unslothai/unsloth"
+          }
+        },
+        "app.zen-browser.zen": {
+          "downloadPage": "https://zen-browser.app/download",
+          "note": "Tags and the app both read like 1.21.16b; Uppdatera drops the lone trailing letter. Zen's own update.xml is Mozilla-style and can't be read. Checked 2026-09-01.",
+          "source": {
+            "kind": "github",
+            "repo": "zen-browser/desktop"
+          }
+        },
+        "cc.ffitch.shottr": {
+          "download": "https://shottr.cc/dl/Shottr-{version}.dmg",
+          "note": "Stay on latestVersion: the same file has beta keys that would offer a step backwards. The vendor's own link is a .pkg; the .dmg is used instead. Checked 2026-09-01.",
+          "source": {
+            "kind": "json",
+            "url": "https://shottr.cc/api/version.json",
+            "versionPath": "latestVersion"
+          }
+        },
+        "com.1password.1password": {
+          "download": "https://downloads.1password.com/mac/1Password-{version}-aarch64.zip",
+          "downloadIntel": "https://downloads.1password.com/mac/1Password-{version}-x86_64.zip",
+          "note": "Undocumented private API. The production segment matters: nightly answers 8.12.38-15.NIGHTLY. Quit is forced because it approves quitting and then hides in the menu bar. Each chip reads its own address; both checked 2026-09-08.",
+          "quit": "force",
+          "source": {
+            "kind": "json",
+            "url": "https://app-updates.agilebits.com/check/3/12/0/OPM8/en/0/A1/production/N",
+            "versionPath": "version"
+          }
+        },
+        "com.adobe.acc.AdobeCreativeCloud": {
+          "exclude": "Creative Cloud updates itself and its apps."
+        },
+        "com.anthropic.claude-code-url-handler": {
+          "exclude": "URL handler for Claude Code; it has no version of its own."
+        },
+        "com.axosoft.gitkraken": {
+          "download": "https://api.gitkraken.dev/releases/production/darwin/arm64/{version}/GitKraken-v{version}.zip",
+          "downloadIntel": "https://api.gitkraken.dev/releases/production/darwin/x64/{version}/GitKraken-v{version}.zip",
+          "note": "Only the arm64 path serves RELEASES (darwin-x64 is 404, plain darwin is stale at 5.0.4); GitKraken publishes both chips in lockstep. Each chip reads its own address; both checked 2026-09-08.",
+          "source": {
+            "kind": "json",
+            "url": "https://release.gitkraken.com/darwin-arm64/RELEASES",
+            "versionPath": "name"
+          }
+        },
+        "com.bitwarden.desktop": {
+          "note": "electron-updater's manifest, read as text. bitwarden/clients mixes CLI, web and browser releases, so its latest release isn't always the desktop app. path is the universal zip. Checked 2026-09-08.",
+          "source": {
+            "downloadPattern": "(?m)^path: (\\S+)",
+            "kind": "page",
+            "url": "https://artifacts.bitwarden.com/desktop/latest-mac.yml",
+            "versionPattern": "(?m)^version: ([0-9.]+)"
+          }
+        },
+        "com.bjango.istatmenus": {
+          "downloadPage": "https://bjango.com/mac/istatmenus/",
+          "note": "The download address redirects to a file named for the version. Tied to the version 7 line; iStat Menus 8 will need a new address. Checked 2026-09-02.",
+          "source": {
+            "kind": "redirect",
+            "url": "https://download.istatmenus.app/istatmenus7/download/",
+            "versionPattern": "iStatMenus([0-9.]+)\\.zip"
+          }
+        },
+        "com.bohemiancoding.sketch3": {
+          "compare": "buildVersion",
+          "note": "Sparkle with no SUFeedURL. Compared on the build number, because the marketing versions are a calendar scheme with varying part counts. Checked 2026-09-01.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://download.sketch.com/sketch-versions.xml"
+          }
+        },
+        "com.brave.Browser": {
+          "compare": "buildVersion",
+          "note": "Compared on the build (194.117), which matches the app; the short versions differ in shape (1.94.117.0 against 152.1.94.117). The Intel feed is the unsuffixed one: stable-x64 answers with an empty channel. Each chip reads its own address; both checked 2026-09-08.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://updates.bravesoftware.com/sparkle/Brave-Browser/stable-arm64/appcast.xml",
+            "urlIntel": "https://updates.bravesoftware.com/sparkle/Brave-Browser/stable/appcast.xml"
+          }
+        },
+        "com.captureone.captureone16": {
+          "note": "The app declares no feed. The feed path isn't tied to a major version but this bundle id is, so watch for Capture One 17. Checked 2026-08-31.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://www.captureone.com/update/capture-one-mac.xml"
+          }
+        },
+        "com.docker.docker": {
+          "note": "Per-chip appcasts, oldest item first. The Intel one is amd64. Each chip reads its own address; both checked 2026-09-08.",
+          "notes": {
+            "end": "</article>",
+            "start": "<article",
+            "url": "https://docs.docker.com/desktop/release-notes/"
+          },
+          "source": {
+            "kind": "sparkle",
+            "url": "https://desktop.docker.com/mac/main/arm64/appcast.xml",
+            "urlIntel": "https://desktop.docker.com/mac/main/amd64/appcast.xml"
+          }
+        },
+        "com.electron.ollama": {
+          "note": "GitHub releases are the vendor's own record; the asset name is stable. Checked 2026-08-31.",
+          "source": {
+            "assetPattern": "^Ollama\\.dmg$",
+            "kind": "github",
+            "repo": "ollama/ollama"
+          }
+        },
+        "com.federicoterzi.espanso": {
+          "note": "No updater in the app; GitHub releases are the only source. The Mac asset moved from .zip to .dmg once, so watch the name.",
+          "source": {
+            "assetPattern": "^Espanso-Mac-Universal\\.dmg$",
+            "kind": "github",
+            "repo": "espanso/espanso"
+          }
+        },
+        "com.figma.Desktop": {
+          "note": "The endpoint isn't declared anywhere on disk. Figma rolls out in stages and this asks without one, which gets the last cohort's answer: it can lag, but never offers what Figma wouldn't. Never send localVersion; the server echoes it back. Each chip reads its own address; both checked 2026-09-08.",
+          "source": {
+            "downloadPath": "url",
+            "kind": "json",
+            "url": "https://desktop.figma.com/mac-arm/RELEASE.json",
+            "urlIntel": "https://desktop.figma.com/mac/RELEASE.json",
+            "versionPath": "version"
+          }
+        },
+        "com.getdropbox.dropbox": {
+          "downloadPage": "https://www.dropbox.com/install",
+          "note": "Dropbox publishes no version anywhere except the name of the file its download link redirects to. Checked 2026-09-02.",
+          "source": {
+            "kind": "redirect",
+            "url": "https://www.dropbox.com/download?plat=mac&full=1",
+            "versionPattern": "Dropbox(?:%20| )([0-9.]+)\\.dmg"
+          }
+        },
+        "com.github.GitHubClient": {
+          "download": "https://github.com/desktop/desktop/releases/download/release-{version}/GitHub.Desktop-arm64.zip",
+          "downloadIntel": "https://github.com/desktop/desktop/releases/download/release-{version}/GitHub.Desktop-x64.zip",
+          "note": "Squirrel, no feed. Tags read release-3.6.9; betas are flagged prerelease. central.github.com used to answer the version but returned 404 on 2026-10-25. Each chip has its own zip.",
+          "source": {
+            "kind": "github",
+            "repo": "desktop/desktop"
+          }
+        },
+        "com.github.wez.wezterm": {
+          "downloadPage": "https://wezterm.org/install/macos.html",
+          "note": "Every WezTerm build reports 0.1.0, and the release tags are dates (20240203-110809-5046fc22), so no source can ever be compared. Checked 2026-09-01.",
+          "source": {
+            "kind": "none"
+          }
+        },
+        "com.google.Chrome": {
+          "exclude": "Chrome updates itself through Google's updater (Keystone)."
+        },
+        "com.google.android.studio": {
+          "downloadPage": "https://developer.android.com/studio",
+          "note": "The app reports 2026.1 while every source says 2026.1.x, which would read as an update forever. The build number (AI-261...) matches Google's updates.xml, which Uppdatera can't read yet. Checked 2026-09-01.",
+          "source": {
+            "kind": "none"
+          }
+        },
+        "com.google.drivefs": {
+          "exclude": "Google Drive updates itself."
+        },
+        "com.hegenberg.BetterTouchTool": {
+          "note": "The feed the app declares (appcast.xml) lags releases by weeks; appcast_manual.xml matches the released build. Checked 2026-09-01.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://updates.folivora.ai/appcast_manual.xml"
+          }
+        },
+        "com.hnc.Discord": {
+          "download": "https://dl.discordapp.net/apps/osx/{version}/Discord.dmg",
+          "note": "Stable channel only; test and nightly have their own addresses. One download serves every Mac. Discord also updates itself.",
+          "source": {
+            "kind": "json",
+            "url": "https://discord.com/api/updates/stable?platform=osx",
+            "versionPath": "name"
+          }
+        },
+        "com.insomnia.app": {
+          "downloadPage": "https://insomnia.rest/download",
+          "note": "The download address redirects to the release asset. HEAD answers 404; only GET redirects. Checked 2026-09-02.",
+          "source": {
+            "kind": "redirect",
+            "url": "https://updates.insomnia.rest/downloads/mac/latest",
+            "versionPattern": "Insomnia\\.Core-([0-9.]+)\\.dmg"
+          }
+        },
+        "com.jetbrains.intellij": {
+          "download": "https://download.jetbrains.com/idea/ideaIU-{version}-aarch64.dmg",
+          "downloadIntel": "https://download.jetbrains.com/idea/ideaIU-{version}.dmg",
+          "note": "type=release is pinned so a vendor default change can't reach a stable install (type=eap is ahead). The build (IU-262...) doesn't parse, so compare on the version. Each chip reads its own address; both checked 2026-09-08.",
+          "source": {
+            "kind": "json",
+            "url": "https://data.services.jetbrains.com/products/releases?code=IIU&latest=true&type=release",
+            "versionPath": "IIU.0.version"
+          }
+        },
+        "com.jetbrains.pycharm": {
+          "download": "https://download.jetbrains.com/python/pycharm-professional-{version}-aarch64.dmg",
+          "downloadIntel": "https://download.jetbrains.com/python/pycharm-professional-{version}.dmg",
+          "note": "Same shape as IntelliJ IDEA: type=release pinned, compared on the version because the build (PY-262...) doesn't parse. Each chip reads its own address; both checked 2026-09-08.",
+          "source": {
+            "kind": "json",
+            "url": "https://data.services.jetbrains.com/products/releases?code=PCP&latest=true&type=release",
+            "versionPath": "PCP.0.version"
+          }
+        },
+        "com.linguee.DeepLCopyTranslator": {
+          "note": "Sparkle 2 with no feed in Info.plist; this is the address hardcoded in the app. Checked 2026-09-01.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://appdownload.deepl.com/macos/appcast.xml"
+          }
+        },
+        "com.logi.optionsplus": {
+          "exclude": "Logi Options+ updates itself."
+        },
+        "com.logi.pluginservice": {
+          "exclude": "Part of Logi Options+, which updates it."
+        },
+        "com.logitech.manager.uninstaller": {
+          "exclude": "An uninstaller; nothing to update."
+        },
+        "com.logseq.logseq": {
+          "note": "Same place the app's own updater reads (app-update.yml). A 'nightly' tag is flagged prerelease and skipped. Assets are per chip and picked automatically. Checked 2026-09-08.",
+          "source": {
+            "kind": "github",
+            "repo": "logseq/logseq"
+          }
+        },
+        "com.lujjjh.LinearMouse": {
+          "download": "https://dl.linearmouse.org/v{version}/LinearMouse.dmg",
+          "note": "Betas are flagged prerelease, so latest is always stable. Download checked 2026-09-01.",
+          "source": {
+            "kind": "github",
+            "repo": "linearmouse/linearmouse"
+          }
+        },
+        "com.lwouis.alt-tab-macos": {
+          "download": "https://github.com/lwouis/alt-tab-macos/releases/download/v{version}/AltTab-{version}.zip",
+          "note": "Sparkle, but Info.plist carries no feed URL. No beta channel in the feed. Checked 2026-09-01.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://alt-tab.app/appcast.xml"
+          }
+        },
+        "com.macpaw.CleanMyMac5": {
+          "compare": "shortVersion",
+          "note": "Sparkle with a blank feed address. The URL has the major version in it, so CleanMyMac 6 will need a new one. Checked 2026-09-01.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://updates.cleanmymac.com/com.macpaw.cleanmymac5/updates.xml"
+          }
+        },
+        "com.macpaw.site.Gemini2": {
+          "compare": "shortVersion",
+          "note": "DevMate-hosted feed; the app declares none. The build column mixes old schemes, so compare on the short version. Checked 2026-09-01.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://updateinfo.devmate.com/com.macpaw.site.Gemini2/updates.xml"
+          }
+        },
+        "com.macpaw.site.theunarchiver": {
+          "note": "DevMate-hosted feed; the app declares none. The App Store copy has a different bundle id. Checked 2026-09-01.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://updateinfo.devmate.com/com.macpaw.site.theunarchiver/updates.xml"
+          }
+        },
+        "com.microsoft.Excel": {
+          "exclude": "Microsoft AutoUpdate keeps Office current."
+        },
+        "com.microsoft.Outlook": {
+          "exclude": "Microsoft AutoUpdate keeps Office current."
+        },
+        "com.microsoft.Powerpoint": {
+          "exclude": "Microsoft AutoUpdate keeps Office current."
+        },
+        "com.microsoft.VSCode": {
+          "notes": {
+            "end": "</main>",
+            "start": "<main class=\"docs-main-content body\">",
+            "url": "https://code.visualstudio.com/updates/v{major}_{minor}"
+          },
+          "source": {
+            "downloadPath": "url",
+            "kind": "json",
+            "url": "https://update.code.visualstudio.com/api/update/darwin-universal/stable/latest",
+            "versionPath": "productVersion"
+          }
+        },
+        "com.microsoft.Word": {
+          "exclude": "Microsoft AutoUpdate keeps Office current."
+        },
+        "com.microsoft.autoupdate2": {
+          "exclude": "Microsoft AutoUpdate is the updater itself."
+        },
+        "com.microsoft.edgemac": {
+          "exclude": "Edge updates itself through Microsoft AutoUpdate."
+        },
+        "com.microsoft.onenote.mac": {
+          "exclude": "Microsoft AutoUpdate keeps Office current."
+        },
+        "com.microsoft.teams2": {
+          "exclude": "Teams updates itself."
+        },
+        "com.mitchellh.ghostty": {
+          "compare": "buildVersion",
+          "note": "Set in code, not Info.plist. Two old items are named after commits, so compare on the build number, which every item carries. Checked 2026-09-01.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://release.files.ghostty.org/appcast.xml"
+          }
+        },
+        "com.mongodb.compass": {
+          "download": "https://downloads.mongodb.com/compass/mongodb-compass-{version}-darwin-arm64.dmg",
+          "downloadIntel": "https://downloads.mongodb.com/compass/mongodb-compass-{version}-darwin-x64.dmg",
+          "note": "Read _id, not version, which appends a channel word in brackets. Readonly and Isolated builds have their own bundle ids. Each chip reads its own address; both checked 2026-09-08.",
+          "source": {
+            "kind": "json",
+            "url": "https://info-mongodb-com.s3.amazonaws.com/com-download-center/compass.json",
+            "versionPath": "versions.0._id"
+          }
+        },
+        "com.noodlesoft.Hazel": {
+          "download": "https://s3.amazonaws.com/Noodlesoft/Hazel-{version}.dmg",
+          "note": "The app's own feed works, but its enclosure is the vendor's home page, so the download is set here. Hazel 6 was a paid upgrade. Checked 2026-09-01."
+        },
+        "com.objective-see.lulu.app": {
+          "download": "https://github.com/objective-see/LuLu/releases/download/v{version}/LuLu_{version}.dmg",
+          "note": "Don't use objective-see.org/products.json: it lags GitHub and isn't valid JSON. Download checked 2026-09-08.",
+          "source": {
+            "kind": "github",
+            "repo": "objective-see/LuLu"
+          }
+        },
+        "com.openai.chat": {
+          "note": "The native ChatGPT (\"ChatGPT Classic\"), not the Codex-based one (com.openai.codex), which is also ChatGPT.app on disk. The public Sparkle feed names a .pkg one build ahead of this image; reading the image keeps the version and the download the same. Checked 2026-09-08.",
+          "source": {
+            "kind": "artifact",
+            "url": "https://persistent.oaistatic.com/sidekick/public/ChatGPT.dmg"
+          }
+        },
+        "com.openai.codex": {
+          "compare": "shortVersion",
+          "note": "The Codex-based ChatGPT, not the native one (com.openai.chat). The app carries no feed address. Compare on the short version (26.831.20005); the build counts separately. Each chip reads its own address; both checked 2026-09-08.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://persistent.oaistatic.com/codex-app-prod/appcast.xml",
+            "urlIntel": "https://persistent.oaistatic.com/codex-app-prod/appcast-x64.xml"
+          }
+        },
+        "com.operasoftware.Opera": {
+          "downloadPage": "https://www.opera.com/download",
+          "note": "The app reports 135.0 while sources publish 135.0.5973.66, which would read as an update forever. The only list of versions is a web directory sorted alphabetically. Checked 2026-09-01.",
+          "source": {
+            "kind": "none"
+          }
+        },
+        "com.panic.Transmit": {
+          "download": "https://download.panic.com/transmit/Transmit%20{version}.zip",
+          "note": "The app's own feed is used. Download checked at five versions, 2026-08-30."
+        },
+        "com.raycast.macos": {
+          "download": "https://releases.raycast.com/releases/{version}/download?build=universal",
+          "note": "Deliberately the 1.x line; a 2.x line lives on another host. Checked 2026-08-31.",
+          "source": {
+            "kind": "json",
+            "url": "https://releases.raycast.com/releases/latest?build=universal",
+            "versionPath": "version"
+          }
+        },
+        "com.runningwithcrayons.Alfred": {
+          "note": "Alfred's own update feed, a property list read as text. Fixed per major: update3/update4 are frozen and update6 serves a beta. Checked 2026-09-08.",
+          "source": {
+            "downloadPattern": "<key>location</key>\\s*<string>([^<]+)</string>",
+            "kind": "page",
+            "url": "https://www.alfredapp.com/app/update5/general.xml",
+            "versionPattern": "<key>version</key>\\s*<string>([0-9.]+)</string>"
+          }
+        },
+        "com.setapp.DesktopClient": {
+          "exclude": "Setapp manages its own updates."
+        },
+        "com.spotify.client": {
+          "exclude": "Spotify updates itself."
+        },
+        "com.stablyai.orca": {
+          "note": "Declared in the app's app-update.yml. Homebrew's cask \"orca\" is Plotly's unrelated Orca, so don't fall back to it. Assets are per chip and picked automatically. Checked 2026-09-06.",
+          "source": {
+            "kind": "github",
+            "repo": "stablyai/orca"
+          }
+        },
+        "com.sublimetext.4": {
+          "compare": "buildVersion",
+          "download": "https://download.sublimetext.com/sublime_text_build_{version}_mac.zip",
+          "note": "Sublime numbers itself by build (\"Build 4200\"). Don't use the dev check beside it. Checked 2026-09-01.",
+          "source": {
+            "kind": "json",
+            "url": "https://www.sublimetext.com/updates/4/stable_update_check",
+            "versionPath": "latest_version"
+          }
+        },
+        "com.teamviewer.TeamViewer": {
+          "downloadPage": "https://www.teamviewer.com/en/download/macos/",
+          "note": "Its feed carries only a build number (15.81.5) while the app's build is 1, which would read as an update forever. The download is a package with daemons, not an app to swap. Checked 2026-09-01.",
+          "source": {
+            "kind": "none"
+          }
+        },
+        "com.timpler.screenstudio": {
+          "download": "https://screenstudioassets.com/releases/{version}/Screen%20Studio-{version}-arm64-mac.zip",
+          "downloadIntel": "https://screenstudioassets.com/releases/{version}/Screen%20Studio-{version}-mac.zip",
+          "downloadPage": "https://screen.studio/",
+          "note": "The feed URL is assembled at runtime; the download page names the version in its links. Keep 3.7.5-4595 whole, as the app reports it. Each chip reads its own address; both checked 2026-09-08.",
+          "source": {
+            "kind": "page",
+            "url": "https://screen.studio/download",
+            "versionPattern": "screenstudioassets\\.com/releases/([0-9]+\\.[0-9]+\\.[0-9]+-[0-9]+)/"
+          }
+        },
+        "com.tinyspeck.slackmacgap": {
+          "download": "https://downloads.slack-edge.com/desktop-releases/mac/universal/{version}/Slack-{version}-macOS.dmg",
+          "downloadPage": "https://slack.com/release-notes/mac",
+          "note": "Takes no version, so it isn't the staged-rollout gate. Universal, so one address serves both chips. Checked 2026-09-01.",
+          "source": {
+            "kind": "json",
+            "url": "https://slack.com/api/desktop.latestRelease?variant=dmg&arch=universal",
+            "versionPath": "version"
+          }
+        },
+        "com.titanium.OnyX": {
+          "download": "https://www.titanium-software.fr/download/26/OnyX.dmg",
+          "note": "OnyX ships one line per macOS release; this is the macOS 26 line. When macOS 27 is stable, both addresses need the new number. Checked 2026-09-01.",
+          "source": {
+            "kind": "page",
+            "url": "https://www.titanium-software.fr/download/26/OnyX.plist",
+            "versionPattern": "<key>Version</key>\\s*<string>([0-9.]+)</string>"
+          }
+        },
+        "com.todesktop.230313mzl4w4u92": {
+          "note": "Cursor's own download API. Downloads sit under a commit hash, so they're read from the answer. A cache can serve an older version briefly after a release. Each chip reads its own address; both checked 2026-09-08.",
+          "source": {
+            "downloadPath": "downloadUrl",
+            "kind": "json",
+            "url": "https://cursor.com/api/download?platform=darwin-arm64&releaseTrack=stable",
+            "urlIntel": "https://cursor.com/api/download?platform=darwin-x64&releaseTrack=stable",
+            "versionPath": "version"
+          }
+        },
+        "com.utmapp.UTM": {
+          "download": "https://github.com/utmapp/UTM/releases/download/v{version}/UTM.dmg",
+          "note": "Betas are flagged prerelease. The App Store copy shares this bundle id but is always checked against the App Store. Checked 2026-09-01.",
+          "source": {
+            "kind": "github",
+            "repo": "utmapp/UTM"
+          }
+        },
+        "com.valvesoftware.steam": {
+          "exclude": "Steam updates itself every time it starts."
+        },
+        "com.westbridge.stremio5-mac": {
+          "download": "https://dl.strem.io/stremio-shell-macos/v{version}/Stremio_arm64.dmg",
+          "downloadIntel": "https://dl.strem.io/stremio-shell-macos/v{version}/Stremio_x64.dmg",
+          "note": "The updater runs a build ahead of the download page, and its directory exists first. versionDesc looks like an address and isn't. stremio-shell-ng is the Windows/Linux line. Each chip reads its own address; both checked 2026-09-08.",
+          "source": {
+            "kind": "json",
+            "url": "https://www.stremio.com/updater/check?product=stremio-shell-macos&arch=arm64",
+            "urlIntel": "https://www.stremio.com/updater/check?product=stremio-shell-macos&arch=x64",
+            "versionPath": "version"
+          }
+        },
+        "dev.kiro.desktop": {
+          "note": "No Sparkle feed; the vendor's own version file, one per chip. Each chip reads its own address; both checked 2026-09-08.",
+          "source": {
+            "downloadPath": "releases.0.updateTo.url",
+            "kind": "json",
+            "url": "https://prod.download.desktop.kiro.dev/stable/metadata-dmg-darwin-arm64-stable.json",
+            "urlIntel": "https://prod.download.desktop.kiro.dev/stable/metadata-dmg-darwin-x64-stable.json",
+            "versionPath": "currentRelease"
+          }
+        },
+        "dev.zed.Zed": {
+          "note": "Previews are flagged prerelease. Assets are per chip (Zed-aarch64.dmg, Zed-x86_64.dmg) and picked automatically. Checked 2026-09-01.",
+          "source": {
+            "kind": "github",
+            "repo": "zed-industries/zed"
+          }
+        },
+        "eu.exelban.Stats": {
+          "note": "No update feed in the app. One Stats.dmg per release. Checked 2026-09-01.",
+          "source": {
+            "assetPattern": "^Stats\\.dmg$",
+            "kind": "github",
+            "repo": "exelban/stats"
+          }
+        },
+        "io.balena.etcher": {
+          "note": "Prereleases look like finished tags, so stay on latest. Assets are per chip and picked automatically. Checked 2026-09-08.",
+          "source": {
+            "kind": "github",
+            "repo": "balena-io/etcher"
+          }
+        },
+        "io.tailscale.ipn.macsys": {
+          "download": "https://pkgs.tailscale.com/stable/Tailscale-{version}-macos.zip",
+          "note": "The standalone build sets its feed at runtime. The feed's enclosure is a bare file name, so the download is spelled out. The App Store build is io.tailscale.ipn.macos. Checked 2026-09-17.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://pkgs.tailscale.com/stable/appcast.xml"
+          }
+        },
+        "md.obsidian": {
+          "download": "https://github.com/obsidianmd/obsidian-releases/releases/download/v{version}/Obsidian-{version}.dmg",
+          "note": "Top-level latestVersion is stable; the beta block beside it isn't. The newest release tag can run ahead of the manifest with no download attached.",
+          "source": {
+            "kind": "json",
+            "url": "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/desktop-releases.json",
+            "versionPath": "latestVersion"
+          }
+        },
+        "net.ankiweb.anki": {
+          "note": "Tags pad the month (26.08.1) while the app reports 26.8.1, which compares the same. Assets are -mac-apple and -mac-intel, picked automatically. Checked 2026-09-01.",
+          "source": {
+            "kind": "github",
+            "repo": "ankitects/anki"
+          }
+        },
+        "net.kovidgoyal.calibre": {
+          "download": "https://github.com/kovidgoyal/calibre/releases/download/v{version}/calibre-{version}.dmg",
+          "note": "calibre's own host answers a missing version with a page and a 200, so the download comes from GitHub.",
+          "source": {
+            "kind": "github",
+            "repo": "kovidgoyal/calibre"
+          }
+        },
+        "net.kovidgoyal.kitty": {
+          "download": "https://github.com/kovidgoyal/kitty/releases/download/v{version}/kitty-{version}.dmg",
+          "note": "No Sparkle feed. One disk image serves every Mac.",
+          "source": {
+            "kind": "github",
+            "repo": "kovidgoyal/kitty"
+          }
+        },
+        "net.whatsapp.WhatsApp": {
+          "note": "The app names no feed. Pinned to the stable branch. WhatsApp also updates itself.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://web.whatsapp.com/desktop/mac_native/updates/?branch=master&configuration=Release"
+          }
+        },
+        "notion.id": {
+          "note": "electron-updater manifests, read as text. Never latest-mac.json: it's a 2018 fossil at 0.3.0. Each chip reads its own address; both checked 2026-09-08.",
+          "source": {
+            "downloadPattern": "(?m)^path: (\\S+)",
+            "kind": "page",
+            "url": "https://desktop-release.notion-static.com/arm64-mac.yml",
+            "urlIntel": "https://desktop-release.notion-static.com/latest-mac.yml",
+            "versionPattern": "(?m)^version: ([0-9.]+)"
+          }
+        },
+        "org.audacityteam.audacity": {
+          "download": "https://github.com/audacity/audacity/releases/download/Audacity-{version}/audacity-macOS-{version}-universal.dmg",
+          "downloadPage": "https://www.audacityteam.org/download/mac/",
+          "note": "Tags read Audacity-3.7.9. The universal image serves both chips. Checked 2026-09-08.",
+          "source": {
+            "kind": "github",
+            "repo": "audacity/audacity"
+          }
+        },
+        "org.cryptomator": {
+          "note": "No updater in the app. Assets are per chip (arm64, x64) and picked automatically. Checked 2026-09-08.",
+          "source": {
+            "kind": "github",
+            "repo": "cryptomator/cryptomator"
+          }
+        },
+        "org.filezilla-project.filezilla": {
+          "downloadPage": "https://filezilla-project.org/download.php?type=client",
+          "note": "The download page hides versions from scripts, so this can't be checked automatically.",
+          "source": {
+            "kind": "none"
+          }
+        },
+        "org.gimp.gimp": {
+          "download": "https://download.gimp.org/gimp/v{major}.{minor}/macos/gimp-{version}-{arch}.dmg",
+          "note": "No updater in the app. STABLE is newest first; DEVELOPMENT sits beside it. Checked 2026-09-08.",
+          "source": {
+            "kind": "json",
+            "url": "https://www.gimp.org/gimp_versions.json",
+            "versionPath": "STABLE.0.version"
+          }
+        },
+        "org.inkscape.Inkscape": {
+          "download": "https://media.inkscape.org/dl/resources/file/Inkscape-{version}_{arch}.dmg",
+          "downloadPage": "https://inkscape.org/release/",
+          "note": "/release/ redirects to the current release page. The download is spelled out because that page is a page of choices. Checked 2026-09-08.",
+          "source": {
+            "kind": "redirect",
+            "url": "https://inkscape.org/release/",
+            "versionPattern": "/inkscape-([0-9.]+)/"
+          }
+        },
+        "org.jkiss.dbeaver.core.product": {
+          "note": "No updater in the app. The -macos.dmg name looks universal but is Intel; assets are per chip and picked automatically. Checked 2026-09-08.",
+          "source": {
+            "kind": "github",
+            "repo": "dbeaver/dbeaver"
+          }
+        },
+        "org.keepassxc.keepassxc": {
+          "note": "No updater in the app. Assets are per chip (arm64, x86_64) and picked automatically. Checked 2026-09-08.",
+          "source": {
+            "kind": "github",
+            "repo": "keepassxreboot/keepassxc"
+          }
+        },
+        "org.mozilla.firefox": {
+          "download": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/{version}/mac/en-US/Firefox%20{version}.dmg",
+          "notes": {
+            "end": "</article>",
+            "start": "<div class=\"fl-split-page-lower\">",
+            "url": "https://www.firefox.com/en-US/firefox/{version}/releasenotes/"
+          },
+          "source": {
+            "kind": "json",
+            "url": "https://product-details.mozilla.org/1.0/firefox_versions.json",
+            "versionPath": "LATEST_FIREFOX_VERSION"
+          }
+        },
+        "org.pqrs.Karabiner-Elements.Settings": {
+          "source": {
+            "cask": "karabiner-elements",
+            "kind": "homebrew"
+          }
+        },
+        "org.pqrs.Karabiner-EventViewer": {
+          "exclude": "Installed and updated together with Karabiner-Elements."
+        },
+        "org.qbittorrent.qBittorrent": {
+          "note": "The project's own updater file; win is a sibling key. The Mac build isn't notarized, so Uppdatera can show the update but won't install it. Checked 2026-09-01.",
+          "source": {
+            "kind": "json",
+            "url": "https://www.qbittorrent.org/versions.json",
+            "versionPath": "macos.version"
+          }
+        },
+        "org.sqlitebrowser.sqlitebrowser": {
+          "source": {
+            "kind": "github",
+            "repo": "sqlitebrowser/sqlitebrowser"
+          }
+        },
+        "org.torproject.torbrowser": {
+          "download": "https://dist.torproject.org/torbrowser/{version}/tor-browser-macos-{version}.dmg",
+          "note": "Per-platform file on purpose: downloads.json says it's deprecated. Alphas live at another address. Checked 2026-09-01.",
+          "source": {
+            "kind": "json",
+            "url": "https://aus1.torproject.org/torbrowser/update_3/release/download-macos.json",
+            "versionPath": "version"
+          }
+        },
+        "org.videolan.vlc": {
+          "compare": "buildVersion",
+          "download": "https://get.videolan.org/vlc/{version}/macosx/vlc-{version}-arm64.dmg",
+          "downloadIntel": "https://get.videolan.org/vlc/{version}/macosx/vlc-{version}-intel64.dmg",
+          "note": "The app carries no feed address. Items carry only sparkle:version, which is the marketing version. The feed's links are plain http to a random mirror, so downloads are spelled out over https. Each chip reads its own address; both checked 2026-09-08.",
+          "source": {
+            "kind": "sparkle",
+            "url": "https://update.videolan.org/vlc/sparkle/vlc-arm64.xml",
+            "urlIntel": "https://update.videolan.org/vlc/sparkle/vlc-intel64.xml"
+          }
+        },
+        "org.whispersystems.signal-desktop": {
+          "download": "https://updates.signal.org/desktop/signal-desktop-mac-universal-{version}.dmg",
+          "note": "Betas are flagged prerelease. Signal's own JSON beside its update file is frozen at 2019; don't use it.",
+          "source": {
+            "kind": "github",
+            "repo": "signalapp/Signal-Desktop"
+          }
+        },
+        "org.zotero.zotero": {
+          "note": "The vendor's download link redirects to a versioned path, and costs no GitHub quota. Checked 2026-09-02.",
+          "source": {
+            "kind": "redirect",
+            "url": "https://www.zotero.org/download/client/dl?channel=release&platform=mac",
+            "versionPattern": "/([0-9.]+)/Zotero-"
+          }
+        },
+        "pl.maketheweb.cleanshotx": {
+          "downloadPage": "https://cleanshot.com/",
+          "note": "The feed the app declares was last written in 2022 (3.7.1); the live one needs a licence. Homebrew's cask tracks the changelog. Checked 2026-09-01.",
+          "source": {
+            "cask": "cleanshot",
+            "kind": "homebrew"
+          }
+        },
+        "tv.plex.desktop": {
+          "downloadPage": "https://www.plex.tv/media-server-downloads/?cat=plex+desktop",
+          "note": "The feed says 1.115.0.426-4e960a1d against an installed 1.115.0; the fourth part is a build, which Uppdatera treats as the same release. Checked 2026-09-08.",
+          "source": {
+            "downloadPath": "computer.MacOS.releases.0.url",
+            "kind": "json",
+            "url": "https://plex.tv/api/downloads/6.json",
+            "versionPath": "computer.MacOS.version"
+          }
+        },
+        "us.zoom.xos": {
+          "exclude": "Zoom updates itself."
+        }
+      },
+      "schemaVersion": 1
+    }
+    """#
+}
