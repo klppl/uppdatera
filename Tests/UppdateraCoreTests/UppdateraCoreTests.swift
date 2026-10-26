@@ -169,6 +169,50 @@ final class DetritusTests: XCTestCase {
     }
 }
 
+final class UninstallerTests: XCTestCase {
+    func testLeftoversMatchOnlyTheApp() throws {
+        let fm = FileManager.default
+        let library = fm.temporaryDirectory.appendingPathComponent("uppdatera-library-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: library) }
+        func make(_ path: String, file: Bool = false) throws {
+            let url = library.appendingPathComponent(path)
+            try fm.createDirectory(at: file ? url.deletingLastPathComponent() : url, withIntermediateDirectories: true)
+            if file { try Data(repeating: 1, count: 4096).write(to: url) }
+        }
+        try make("Caches/com.vendor.Tool/data.bin", file: true)
+        try make("Preferences/com.vendor.Tool.plist", file: true)
+        try make("Application Support/com.vendor.Tool")
+        try make("Application Support/Tool")
+        try make("Containers/com.vendor.Tool")
+        try make("Caches/com.vendor.ToolHelper")        // another app with a longer id
+        try make("Preferences/com.vendor.Other.plist", file: true)
+        try make("Elsewhere/real")
+        try make("Logs")
+        try fm.createSymbolicLink(at: library.appendingPathComponent("Logs/com.vendor.Tool"),
+                                  withDestinationURL: library.appendingPathComponent("Elsewhere/real"))
+
+        let app = InstalledApp(path: URL(fileURLWithPath: "/Applications/Tool.app"), name: "Tool", bundleID: "com.vendor.Tool",
+                               shortVersion: "1.0", buildVersion: nil, sparkleFeedURL: nil, isAppStore: false, isSetapp: false)
+        let found = Dictionary(uniqueKeysWithValues: Uninstaller.leftovers(for: app, library: library)
+            .map { ($0.place + "/" + $0.url.lastPathComponent, $0) })
+
+        XCTAssertEqual(Set(found.keys), ["Caches/com.vendor.Tool", "Preferences/com.vendor.Tool.plist",
+                                          "Application Support/com.vendor.Tool", "Application Support/Tool",
+                                          "Containers/com.vendor.Tool"])
+        XCTAssertEqual(found["Caches/com.vendor.Tool"]?.suggested, true)
+        XCTAssertGreaterThanOrEqual(found["Caches/com.vendor.Tool"]?.size ?? 0, 4096)
+        // Places that can hold the user's own data, and name matches, start unticked.
+        XCTAssertEqual(found["Application Support/com.vendor.Tool"]?.suggested, false)
+        XCTAssertEqual(found["Containers/com.vendor.Tool"]?.suggested, false)
+        XCTAssertEqual(found["Application Support/Tool"]?.suggested, false)
+
+        let apple = InstalledApp(path: URL(fileURLWithPath: "/Applications/Notes.app"), name: "Notes", bundleID: "com.apple.Notes",
+                                 shortVersion: "1.0", buildVersion: nil, sparkleFeedURL: nil, isAppStore: false, isSetapp: false)
+        XCTAssertFalse(Uninstaller.canUninstall(apple))
+        XCTAssertEqual(Uninstaller.leftovers(for: apple, library: library), [])
+    }
+}
+
 final class PackageParsingTests: XCTestCase {
     func testGoVersionOutput() {
         let out = """

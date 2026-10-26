@@ -99,6 +99,7 @@ The command line is handy while working:
 ```bash
 swift run Uppdatera --check --verbose --packages   # everything, with each app's trace
 swift run Uppdatera --install com.vendor.App       # install one update
+swift run Uppdatera --uninstall com.vendor.App --dry-run  # what Uninstall would move to the Trash
 swift run Uppdatera --github-status                # which GitHub token is used, requests left
 swift run Uppdatera --background-check             # what the background agent runs
 ```

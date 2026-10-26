@@ -13,6 +13,7 @@ A free macOS updater for every app in `/Applications`, and for the packages your
 - Updates Homebrew, npm, pnpm, bun, Go, Cargo, uv, pipx and RubyGems packages too.
 - Can check in the background, even while it's closed, and notifies you once per update.
 - Lets you skip a version, pin an app, hold it at its major version, or ignore it.
+- Uninstalls apps too, with the caches and settings they left behind if you tick them. Everything goes to the Trash.
 
 ## Good to know
 

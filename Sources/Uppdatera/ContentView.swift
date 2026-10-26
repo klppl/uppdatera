@@ -52,6 +52,9 @@ struct ContentView: View {
                              set: { model.checkLogFor = $0?.id })) { row in
             CheckLog(row: row)
         }
+        .sheet(item: Binding(get: { model.uninstallFor }, set: { model.uninstallFor = $0 })) { row in
+            UninstallSheet(row: row)
+        }
         .toolbar {
             ToolbarItemGroup {
                 if !model.queue.isEmpty {
@@ -388,6 +391,10 @@ struct AppActions: View {
         Button("Copy Diagnostics") { model.copyDiagnostics(for: row) }
         if let url = ProjectLinks.reportProblem(app: row.app, diagnostics: model.diagnostics(for: row)) {
             Button("Report a Problem…") { NSWorkspace.shared.open(url) }
+        }
+        if Uninstaller.canUninstall(row.app) {
+            Divider()
+            Button("Uninstall \(row.app.name)…", role: .destructive) { model.uninstallFor = row }
         }
     }
 }

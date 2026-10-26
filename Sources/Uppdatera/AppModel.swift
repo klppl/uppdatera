@@ -96,6 +96,8 @@ final class AppModel {
     var notices: [String: String] = [:]
     /// The app whose check log is open in a sheet.
     var checkLogFor: String?
+    /// The app the Uninstall sheet is open for. Held whole, so the sheet outlives its row.
+    var uninstallFor: AppRow?
     var queue: [String] = []
 
     var frequency: CheckFrequency {
@@ -444,6 +446,24 @@ final class AppModel {
                 notices["backgroundChecks"] = error.localizedDescription
             }
         }
+    }
+
+    // MARK: Uninstall
+
+    /// Moves the app and the chosen leftovers to the Trash, then drops it from the lists.
+    func uninstall(_ row: AppRow, leftovers: [URL]) async throws -> [String] {
+        var caskToken: String?
+        if let cask = await CaskCatalogue.shared.entry(forAppNamed: row.app.fileName), CaskCatalogue.installedToken(cask.token) {
+            caskToken = cask.token
+        }
+        let result = try await Uninstaller.uninstall(row.app, leftovers: leftovers, caskToken: caskToken)
+        rows.removeAll { $0.id == row.id }
+        failures[row.id] = nil
+        notices[row.id] = nil
+        queue.removeAll { $0 == row.id }
+        saveResults()
+        refreshBadge()
+        return result.problems
     }
 
     // MARK: Diagnostics

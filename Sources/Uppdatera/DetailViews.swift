@@ -150,6 +150,96 @@ struct CheckLog: View {
     }
 }
 
+/// Confirms an uninstall: the app, plus the leftovers it found in the user's Library to tick.
+struct UninstallSheet: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    let row: AppRow
+    @State private var appSize: Int64?
+    @State private var leftovers: [Uninstaller.Leftover]?
+    @State private var chosen = Set<String>()
+    @State private var working = false
+    @State private var error: String?
+    @State private var problems: [String]?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(problems == nil ? "Uninstall \(row.app.name)?" : "\(row.app.name) is in the Trash").font(.headline)
+            if let problems {
+                Text("Some things couldn't be done:").foregroundStyle(.secondary)
+                ForEach(problems, id: \.self) { Label($0, systemImage: "exclamationmark.triangle").font(.callout) }
+            } else {
+                list
+                Text("Everything goes to the Trash, so you can put it back. Unticked items stay; they can hold your own data.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if let error { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red).font(.callout) }
+            }
+            HStack {
+                if working { ProgressView().controlSize(.small) }
+                Spacer()
+                if problems != nil {
+                    Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+                } else {
+                    Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
+                    Button("Move to Trash", role: .destructive) { remove() }.disabled(working || leftovers == nil)
+                }
+            }
+        }
+        .padding(20)
+        .frame(width: 520)
+        .task {
+            let app = row.app
+            let (size, found) = await Task.detached { (Uninstaller.size(of: app.path), Uninstaller.leftovers(for: app)) }.value
+            appSize = size
+            leftovers = found
+            chosen = Set(found.filter(\.suggested).map(\.id))
+        }
+    }
+
+    private var list: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Toggle(isOn: .constant(true)) { item(row.app.fileName, place: "Applications", size: appSize) }.disabled(true)
+            if let leftovers {
+                if leftovers.isEmpty { Text("Nothing else of it in your Library.").font(.callout).foregroundStyle(.secondary) }
+                ForEach(leftovers) { leftover in
+                    Toggle(isOn: Binding(get: { chosen.contains(leftover.id) },
+                                         set: { if $0 { chosen.insert(leftover.id) } else { chosen.remove(leftover.id) } })) {
+                        item(leftover.url.lastPathComponent, place: leftover.place, size: leftover.size)
+                    }
+                    .help(leftover.url.path)
+                }
+            } else {
+                ProgressView().controlSize(.small)
+            }
+        }
+    }
+
+    private func item(_ name: String, place: String, size: Int64?) -> some View {
+        HStack {
+            Text(place + "/").foregroundStyle(.secondary) + Text(name)
+            Spacer()
+            Text(size.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? "…")
+                .foregroundStyle(.secondary).monospacedDigit()
+        }
+        .lineLimit(1).truncationMode(.middle)
+    }
+
+    private func remove() {
+        working = true
+        error = nil
+        let urls = (leftovers ?? []).filter { chosen.contains($0.id) }.map(\.url)
+        Task {
+            do {
+                let left = try await model.uninstall(row, leftovers: urls)
+                if left.isEmpty { dismiss() } else { problems = left }
+            } catch {
+                self.error = (error as? InstallError)?.message ?? error.localizedDescription
+            }
+            working = false
+        }
+    }
+}
+
 struct SourceBadge: View {
     let text: String
     var body: some View {

@@ -5,7 +5,7 @@ import UppdateraCore
 @main
 enum Entry {
     static func main() {
-        let cliFlags: Set = ["--check", "--test-rule", "--install", "--packages", "--background-check", "--github-status", "--validate-rules"]
+        let cliFlags: Set = ["--check", "--test-rule", "--install", "--uninstall", "--packages", "--background-check", "--github-status", "--validate-rules"]
         if CommandLine.arguments.contains(where: cliFlags.contains) {
             CLI.run()
         } else {
@@ -193,6 +193,32 @@ enum CLI {
                         if fraction == nil || fraction == 0 { print("  \(stage.rawValue)…") }
                     }
                     print("Done: \(outcome)")
+                    exit(0)
+                } catch {
+                    print("Failed: \(error.localizedDescription)")
+                    exit(1)
+                }
+            }
+            // `--uninstall <bundle id> [--dry-run]`: the app and its usual leftovers (the ones the
+            // Uninstall sheet ticks) go to the Trash. --dry-run only lists them.
+            if let i = CommandLine.arguments.firstIndex(of: "--uninstall"), i + 1 < CommandLine.arguments.count {
+                let id = CommandLine.arguments[i + 1]
+                guard let app = apps.first(where: { $0.bundleID == id || $0.name == id }) else {
+                    print("No installed app matches \(id)"); exit(1)
+                }
+                guard Uninstaller.canUninstall(app) else { print("\(app.name) can't be uninstalled here."); exit(1) }
+                let found = Uninstaller.leftovers(for: app)
+                print("\(app.path.path)  (\(ByteCountFormatter.string(fromByteCount: Uninstaller.size(of: app.path), countStyle: .file)))")
+                for leftover in found {
+                    print("\(leftover.suggested ? "remove" : "keep  ")  \(leftover.url.path)  (\(ByteCountFormatter.string(fromByteCount: leftover.size, countStyle: .file)))")
+                }
+                if CommandLine.arguments.contains("--dry-run") { exit(0) }
+                var cask: String?
+                if let entry = await CaskCatalogue.shared.entry(forAppNamed: app.fileName), CaskCatalogue.installedToken(entry.token) { cask = entry.token }
+                do {
+                    let result = try await Uninstaller.uninstall(app, leftovers: found.filter(\.suggested).map(\.url), caskToken: cask)
+                    result.problems.forEach { print("Problem: \($0)") }
+                    print("Moved to the Trash.")
                     exit(0)
                 } catch {
                     print("Failed: \(error.localizedDescription)")
