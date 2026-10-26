@@ -86,6 +86,19 @@ final class CompareTests: XCTestCase {
         XCTAssertEqual(checker.compare(app(short: "2.1", build: "4501"), short: "2.1", build: "2.1", basis: .buildVersion), .same)
     }
 
+    /// Bitwarden's case: an App Store copy can only be updated by the App Store, so a rule that
+    /// reads the vendor's site must not be used for it.
+    func testAppStoreCopiesSkipVendorRules() throws {
+        let rules = try RulesStore.decode(Data(#"{"schemaVersion":1,"apps":{"a.b":{"source":{"kind":"page","url":"https://e/latest-mac.yml","versionPattern":"v([0-9.]+)"}},"c.d":{"source":{"kind":"appStore"}}}}"#.utf8)).apps
+        func app(_ id: String, store: Bool) -> InstalledApp {
+            InstalledApp(path: URL(fileURLWithPath: "/Applications/X.app"), name: "X", bundleID: id, shortVersion: "1.0",
+                         buildVersion: nil, sparkleFeedURL: nil, isAppStore: store, isSetapp: false)
+        }
+        XCTAssertNil(UpdateChecker.ruleSource(for: app("a.b", store: true), rule: rules["a.b"]))
+        XCTAssertEqual(UpdateChecker.ruleSource(for: app("a.b", store: false), rule: rules["a.b"])?.kind, .page)
+        XCTAssertEqual(UpdateChecker.ruleSource(for: app("c.d", store: true), rule: rules["c.d"])?.kind, .appStore)
+    }
+
     func testShortVersionDefault() {
         let checker = UpdateChecker(rules: [:])
         XCTAssertEqual(checker.compare(app(short: "1.4.2", build: "29"), short: "1.5.0", build: nil, basis: nil), .newer)

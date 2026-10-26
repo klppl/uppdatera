@@ -402,7 +402,9 @@ public enum Installer {
     /// Installs through `mas` (github.com/mas-cli/mas) when it's installed; otherwise, or when
     /// it fails, opens the app's store page so the user can click Update there.
     static func appStoreUpdate(_ app: InstalledApp, update: UpdateInfo, progress: @escaping Progress) async throws -> InstallOutcome {
-        let storePage = update.storeID.flatMap { URL(string: "macappstore://apps.apple.com/app/id\($0)") } ?? update.pageURL
+        // Only ever an App Store page: a vendor's link can't update an App Store copy.
+        let storePage = update.storeID.flatMap { URL(string: "macappstore://apps.apple.com/app/id\($0)") }
+            ?? (update.source == .appStore ? update.pageURL : nil)
         var why = "Install mas (brew install mas) to let Uppdatera install App Store updates itself."
         if let id = update.storeID, await Command.which("mas") != nil {
             progress(.appStore, nil)
@@ -414,7 +416,8 @@ public enum Installer {
             let detail = (r.stderr + r.stdout).split(separator: "\n").last.map(String.init) ?? ""
             why = "mas couldn't install it\(detail.isEmpty ? "" : ": \(detail)")."
         }
-        if let storePage { _ = await MainActor.run { NSWorkspace.shared.open(storePage) } }
+        guard let storePage else { return .handedOff("Update it in the App Store. \(why)") }
+        _ = await MainActor.run { NSWorkspace.shared.open(storePage) }
         return .handedOff("Opened in the App Store; click Update there. \(why)")
     }
 

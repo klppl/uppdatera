@@ -45,7 +45,11 @@ public struct UpdateChecker: Sendable {
             }
         }
 
-        if let source = rule?.source, source.kind != .none {
+        let source = Self.ruleSource(for: app, rule: rule)
+        if let skipped = rule?.source, source == nil {
+            trace.append("Installed from the App Store, so only the App Store can update it; the rule's \(skipped.kind.rawValue) source is skipped")
+        }
+        if let source, source.kind != .none {
             do {
                 let (candidate, comparison) = try await fromRule(source, app: app, rule: rule!, trace: &trace)
                 consider(candidate, comparison: comparison, from: "Rule (\(source.kind.rawValue))")
@@ -53,7 +57,7 @@ public struct UpdateChecker: Sendable {
             } catch {
                 trace.append("Rule (\(source.kind.rawValue)) failed: \(error.localizedDescription)")
             }
-        } else if rule?.source?.kind == AppRule.Source.Kind.none {
+        } else if source?.kind == AppRule.Source.Kind.none {
             let page = rule?.downloadPage.map { " Download page: \($0)" } ?? ""
             return CheckResult(status: .unknown("No source can be checked automatically.\(page)"), trace: ["Rule says no source." + page])
         }
@@ -141,6 +145,13 @@ public struct UpdateChecker: Sendable {
         }
         if decided { return finish(.upToDate(latest: latestSeen), trace: trace) }
         return finish(.unknown("No source knows about this app. Add a rule for \(app.bundleID)."), trace: trace)
+    }
+
+    /// The rule's source, unless the app came from the App Store: only the App Store can update
+    /// that copy, so a vendor's site or GitHub would offer something it can't install.
+    static func ruleSource(for app: InstalledApp, rule: AppRule?) -> AppRule.Source? {
+        guard let source = rule?.source else { return nil }
+        return app.isAppStore && source.kind != .appStore ? nil : source
     }
 
     private func finish(_ status: AppStatus, trace: [String]) -> CheckResult {

@@ -61,7 +61,8 @@
       }
     },
     "com.bitwarden.desktop": {
-      "note": "electron-updater's manifest, read as text. bitwarden/clients mixes CLI, web and browser releases, so its latest release isn't always the desktop app. path is the universal zip. Checked 2026-09-08.",
+      "downloadPage": "https://bitwarden.com/download/",
+      "note": "electron-updater's manifest, read as text. bitwarden/clients mixes CLI, web and browser releases, so its latest release isn't always the desktop app. path is the universal zip. Checked 2026-09-08. The App Store copy is checked against the App Store instead.",
       "source": {
         "downloadPattern": "(?m)^path: (\\S+)",
         "kind": "page",
@@ -390,6 +391,7 @@
       }
     },
     "com.runningwithcrayons.Alfred": {
+      "downloadPage": "https://www.alfredapp.com/",
       "note": "Alfred's own update feed, a property list read as text. Fixed per major: update3/update4 are frozen and update6 serves a beta. Checked 2026-09-08.",
       "source": {
         "downloadPattern": "<key>location</key>\\s*<string>([^<]+)</string>",
@@ -451,6 +453,7 @@
     },
     "com.titanium.OnyX": {
       "download": "https://www.titanium-software.fr/download/26/OnyX.dmg",
+      "downloadPage": "https://www.titanium-software.fr/en/onyx.html",
       "note": "OnyX ships one line per macOS release; this is the macOS 26 line. When macOS 27 is stable, both addresses need the new number. Checked 2026-09-01.",
       "source": {
         "kind": "page",
@@ -570,6 +573,7 @@
       }
     },
     "notion.id": {
+      "downloadPage": "https://www.notion.com/desktop",
       "note": "electron-updater manifests, read as text. Never latest-mac.json: it's a 2018 fossil at 0.3.0. Each chip reads its own address; both checked 2026-09-08.",
       "source": {
         "downloadPattern": "(?m)^path: (\\S+)",
