@@ -161,11 +161,79 @@ final class AppModel {
         timer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.scheduledTick() }
         }
+        // Coming back from the App Store or an Installer is when an update has usually just finished.
+        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.refreshInstalledVersions() }
+        }
     }
 
     private func scheduledTick() {
-        guard !isChecking, let interval = frequency.interval else { return }
-        if Date().timeIntervalSince(lastCheck ?? .distantPast) >= interval { checkNow() }
+        guard !isChecking else { return }
+        if let interval = frequency.interval, Date().timeIntervalSince(lastCheck ?? .distantPast) >= interval {
+            checkNow()
+        } else {
+            refreshInstalledVersions()
+        }
+    }
+
+    // MARK: Installed versions
+
+    /// Re-reads the installed apps and checks again the ones whose version changed on disk, so an
+    /// update finished in the App Store, an Installer or by the app itself drops off the list
+    /// without waiting for the next full check. Reading versions needs no network.
+    func refreshInstalledVersions() {
+        guard !isChecking else { return }
+        let previous = Dictionary(rows.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        var changed: [InstalledApp] = []
+        let scanned = AppScanner.scan()
+        rows = scanned.map { app in
+            guard let old = previous[app.id] else {
+                changed.append(app)
+                return AppRow(app: app)
+            }
+            // Uppdatera's own installs update their row when they finish.
+            guard installing[app.id] == nil,
+                  app.displayVersion != old.app.displayVersion || app.buildVersion != old.app.buildVersion else { return old }
+            if let update = old.status.update {
+                record(HistoryEntry(name: app.name, identifier: app.bundleID, from: old.app.displayVersion, to: app.displayVersion, via: update.source.label))
+            }
+            notices[app.id] = nil
+            changed.append(app)
+            return AppRow(app: app, trace: ["Now \(app.displayVersion) on disk (was \(old.app.displayVersion)), so checked again"])
+        }
+        guard !changed.isEmpty || scanned.count != previous.count else { return }
+        saveResults()
+        refreshBadge()
+        Task { await recheck(changed) }
+    }
+
+    private func recheck(_ apps: [InstalledApp]) async {
+        guard !apps.isEmpty else { return }
+        let checker = UpdateChecker(rules: RulesStore.load().rules)
+        let results = await boundedMap(apps, limit: 4) { app in (app.id, await checker.check(app)) }
+        for (id, result) in results {
+            guard let i = rows.firstIndex(where: { $0.id == id }), rows[i].status == .pending else { continue }
+            rows[i].status = result.status
+            rows[i].trace += result.trace
+        }
+        saveResults()
+        refreshBadge()
+    }
+
+    /// An update handed to the App Store or an Installer finishes outside Uppdatera. Watch for the
+    /// new version on disk for up to an hour, so the row goes away even if the window stays open.
+    private func watchForOutsideInstall(of app: InstalledApp) {
+        Task {
+            for _ in 0..<720 {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                // Missing for a moment is normal while an installer swaps the app.
+                guard let now = AppScanner.read(app.path) else { continue }
+                if now.displayVersion != app.displayVersion || now.buildVersion != app.buildVersion {
+                    refreshInstalledVersions()
+                    return
+                }
+            }
+        }
     }
 
     // MARK: Derived lists
@@ -357,6 +425,7 @@ final class AppModel {
                     saveResults()
                 case let .handedOff(message):
                     notices[app.id] = message
+                    watchForOutsideInstall(of: app)
                 }
             } catch {
                 let stage = installing[app.id]?.stage
