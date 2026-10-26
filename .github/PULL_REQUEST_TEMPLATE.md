@@ -7,5 +7,5 @@
 
 ```
 swift run Uppdatera --rules rules/rules.json --test-rule <bundle id> <an older version>
-swift run Uppdatera --validate-rules rules/rules.json
+swift run Uppdatera --validate-rules rules/rules.json --live
 ```

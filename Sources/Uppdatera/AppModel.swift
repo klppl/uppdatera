@@ -5,7 +5,7 @@ import UppdateraCore
 import UserNotifications
 
 enum SidebarSection: String, CaseIterable, Identifiable, Hashable {
-    case updates, history, applications, packages, pinned, ignored
+    case updates, history, applications, packages, noSource, pinned, ignored
     var id: String { rawValue }
 
     var title: String {
@@ -14,6 +14,7 @@ enum SidebarSection: String, CaseIterable, Identifiable, Hashable {
         case .history: "Recently Updated"
         case .applications: "Applications"
         case .packages: "Packages"
+        case .noSource: "No Update Source"
         case .pinned: "Pinned & Held"
         case .ignored: "Ignored"
         }
@@ -25,6 +26,7 @@ enum SidebarSection: String, CaseIterable, Identifiable, Hashable {
         case .history: "clock.arrow.circlepath"
         case .applications: "square.grid.2x2"
         case .packages: "shippingbox"
+        case .noSource: "questionmark.circle"
         case .pinned: "pin"
         case .ignored: "bell.slash"
         }
@@ -92,6 +94,8 @@ final class AppModel {
     var installing: [String: InstallState] = [:] { didSet { updateDock() } }
     var failures: [String: Failure] = [:]
     var notices: [String: String] = [:]
+    /// The app whose check log is open in a sheet.
+    var checkLogFor: String?
     var queue: [String] = []
 
     var frequency: CheckFrequency {
@@ -190,6 +194,14 @@ final class AppModel {
         rows.filter { preferences[$0.app.bundleID]?.ignored == true }
     }
 
+    /// Apps no source could check, so a missing or broken rule doesn't go unnoticed. Ignored apps stay in Ignored.
+    var noSource: [AppRow] {
+        rows.filter { row in
+            guard case .unknown = row.status else { return false }
+            return preferences[row.app.bundleID]?.ignored != true
+        }
+    }
+
     var badgeCount: Int { updates.count + (checkPackages ? visiblePackages.count : 0) }
 
     func rows(for section: SidebarSection) -> [AppRow] {
@@ -198,6 +210,7 @@ final class AppModel {
         case .applications: rows
         case .pinned: pinnedOrHeld
         case .ignored: ignored
+        case .noSource: noSource
         case .packages, .history: []
         }
     }
@@ -210,6 +223,7 @@ final class AppModel {
         case .packages: checkPackages ? visiblePackages.count : 0
         case .pinned: pinnedOrHeld.count
         case .ignored: ignored.count
+        case .noSource: noSource.count
         }
     }
 
@@ -433,6 +447,11 @@ final class AppModel {
     }
 
     // MARK: Diagnostics
+
+    func copyDiagnostics(for row: AppRow) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(diagnostics(for: row), forType: .string)
+    }
 
     func diagnostics(for row: AppRow) -> String {
         let me = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"

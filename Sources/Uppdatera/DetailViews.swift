@@ -5,7 +5,6 @@ import WebKit
 struct AppDetail: View {
     @Environment(AppModel.self) private var model
     let row: AppRow
-    @State private var showTrace = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -17,22 +16,6 @@ struct AppDetail: View {
             Divider()
             // Fills the pane, so the header stays at the top even when there are no notes to show.
             notes.frame(maxHeight: .infinity)
-            Divider()
-            DisclosureGroup("How Uppdatera decided", isExpanded: $showTrace) {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(Array(row.trace.enumerated()), id: \.offset) { _, line in
-                        Text("· " + line).font(.caption).fontDesign(.monospaced).textSelection(.enabled)
-                    }
-                    Button("Copy Diagnostics") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(model.diagnostics(for: row), forType: .string)
-                    }
-                    .controlSize(.small)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 4)
-            }
-            .padding(12)
         }
     }
 
@@ -134,6 +117,36 @@ struct AppDetail: View {
                 if let page = row.status.update?.pageURL { Button("Open Release Page") { NSWorkspace.shared.open(page) } }
             }
         }
+    }
+}
+
+/// Every source Uppdatera tried for an app and what each one answered. Opened from the More menu.
+struct CheckLog: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    let row: AppRow
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("How Uppdatera checked \(row.app.name)").font(.headline)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    if row.trace.isEmpty { Text("Not checked yet.").foregroundStyle(.secondary) }
+                    ForEach(Array(row.trace.enumerated()), id: \.offset) { _, line in
+                        Text("· " + line).font(.callout).fontDesign(.monospaced).textSelection(.enabled)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(minHeight: 120, maxHeight: 360)
+            HStack {
+                Button("Copy Diagnostics") { model.copyDiagnostics(for: row) }
+                Spacer()
+                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 560)
     }
 }
 

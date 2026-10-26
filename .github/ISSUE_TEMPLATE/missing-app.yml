@@ -1,5 +1,5 @@
 name: An app is missing
-description: Uppdatera doesn't list an app, or says no source knows about it.
+description: Uppdatera doesn't list an app, or lists it under No Update Source.
 labels: [rules]
 body:
   - type: input

@@ -17,13 +17,14 @@ struct ContentView: View {
                 Section("Library") {
                     SidebarRow(item: .applications)
                     SidebarRow(item: .packages)
+                    SidebarRow(item: .noSource)
                 }
                 Section("Silenced") {
                     SidebarRow(item: .pinned)
                     SidebarRow(item: .ignored)
                 }
             }
-            .navigationSplitViewColumnWidth(min: 190, ideal: 220)
+            .navigationSplitViewColumnWidth(min: 215, ideal: 230)
         } detail: {
             MainList(section: section ?? .updates, selection: $selection, search: search)
                 .frame(minWidth: 380)
@@ -47,6 +48,10 @@ struct ContentView: View {
         }
         .onChange(of: section) { _, _ in selection = nil }
         .sheet(isPresented: $showOnboarding) { OnboardingView() }
+        .sheet(item: Binding(get: { model.checkLogFor.flatMap { id in model.rows.first { $0.id == id } } },
+                             set: { model.checkLogFor = $0?.id })) { row in
+            CheckLog(row: row)
+        }
         .toolbar {
             ToolbarItemGroup {
                 if !model.queue.isEmpty {
@@ -93,7 +98,7 @@ struct MainList: View {
         case .updates: updatesList
         case .packages: packagesList
         case .history: HistoryList()
-        case .applications, .pinned, .ignored: appsList
+        case .applications, .noSource, .pinned, .ignored: appsList
         }
     }
 
@@ -144,11 +149,19 @@ struct MainList: View {
                 switch section {
                 case .pinned: ContentUnavailableView("No applications are pinned or held", systemImage: "pin.slash")
                 case .ignored: ContentUnavailableView("No applications are ignored", systemImage: "bell")
+                case .noSource: ContentUnavailableView("Every application has an update source", systemImage: "checkmark.circle")
                 default: ContentUnavailableView.search
                 }
             } else {
-                List(rows, selection: $selection) { row in
-                    AppRowView(row: row, showsStatus: true).tag(row.id).contextMenu { AppActions(row: row) }
+                List(selection: $selection) {
+                    if section == .noSource {
+                        Label("Uppdatera doesn't know where these apps publish new versions. A rule fixes that: right-click an app and choose Report a Problem to ask for one.",
+                              systemImage: "info.circle")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    ForEach(rows) { row in
+                        AppRowView(row: row, showsStatus: true).tag(row.id).contextMenu { AppActions(row: row) }
+                    }
                 }
             }
         }
@@ -371,10 +384,8 @@ struct AppActions: View {
         if let page = row.status.update?.pageURL {
             Button("Open Release Notes Page") { NSWorkspace.shared.open(page) }
         }
-        Button("Copy Diagnostics") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(model.diagnostics(for: row), forType: .string)
-        }
+        Button("Show Check Log…") { model.checkLogFor = row.id }
+        Button("Copy Diagnostics") { model.copyDiagnostics(for: row) }
         if let url = ProjectLinks.reportProblem(app: row.app, diagnostics: model.diagnostics(for: row)) {
             Button("Report a Problem…") { NSWorkspace.shared.open(url) }
         }
