@@ -78,15 +78,22 @@ most changes come with a unit test in `Tests/`.
 
 ## Releasing
 
-Push a tag like `v1.2.0`, or run the Release workflow by hand. It tests, builds a universal
-`Uppdatera.dmg` and publishes it as a GitHub release. The file name never changes, so
+Releases are built on the maintainer's Mac, where the Developer ID certificate lives:
+
+```bash
+./scripts/release.sh 1.2.0
+```
+
+It checks that `main` is clean and pushed, runs the tests, builds a universal app and
+`Uppdatera.dmg` signed with the keychain's Developer ID, notarizes and staples the image, then
+tags `v1.2.0` and publishes the release. The file name never changes, so
 `releases/latest/download/Uppdatera.dmg` always points at the newest one.
 
-Add these repository secrets to sign and notarize it; without them the build is ad-hoc signed,
-opens only with right-click → Open, and can't update itself:
+Once per Mac, save the notarization login (it asks for an app-specific password from
+account.apple.com):
 
-- `MACOS_CERTIFICATE`: a Developer ID Application certificate as a base64 `.p12`
-  (`base64 -i cert.p12 | pbcopy`), and `MACOS_CERTIFICATE_PASSWORD`
-- `NOTARY_APPLE_ID`, `NOTARY_TEAM_ID` and `NOTARY_PASSWORD` (an app-specific password)
+```bash
+xcrun notarytool store-credentials uppdatera --apple-id you@example.com --team-id TEAMID
+```
 
-To build the same thing locally: `REPO=owner/name ./scripts/build-app.sh && ./scripts/build-dmg.sh`.
+An unsigned build for trying things out: `./scripts/build-app.sh && ./scripts/build-dmg.sh`.
